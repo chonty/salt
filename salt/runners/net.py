@@ -80,10 +80,15 @@ from salt.ext.six.moves import map
 try:
     from netaddr import IPNetwork  # netaddr is already required by napalm-base
     from netaddr.core import AddrFormatError
-    from napalm_base import helpers as napalm_helpers
+    from napalm.base import helpers as napalm_helpers
     HAS_NAPALM_BASE = True
 except ImportError:
     HAS_NAPALM_BASE = False
+    try:
+        from napalm_base import helpers as napalm_helpers
+        HAS_NAPALM_BASE = True
+    except ImportError:
+        HAS_NAPALM_BASE = False
 
 # -----------------------------------------------------------------------------
 # module properties
@@ -224,7 +229,7 @@ def _find_interfaces_mac(ip):  # pylint: disable=invalid-name
         if not device_ipaddrs.get('result', False):
             continue
         for interface, interface_ipaddrs in six.iteritems(device_ipaddrs.get('out', {})):
-            ip_addresses = interface_ipaddrs.get('ipv4', {}).keys()
+            ip_addresses = list(interface_ipaddrs.get('ipv4', {}))
             ip_addresses.extend(interface_ipaddrs.get('ipv6', {}).keys())
             for ipaddr in ip_addresses:
                 if ip != ipaddr:
@@ -406,6 +411,7 @@ def interfaces(device=None,
                             if best:
                                 # determine the global best match
                                 compare = [best_net_match]
+                                if not best_net_match: compare = []
                                 compare.extend(list(map(_get_network_obj, inet_ips)))
                                 new_best_net_match = max(compare)
                                 if new_best_net_match != best_net_match:
