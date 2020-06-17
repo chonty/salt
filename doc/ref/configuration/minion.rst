@@ -223,7 +223,7 @@ the minion also sends a similar event with an event tag like this:
 ``minion_start``. This duplication can cause a lot of clutter on the event bus
 when there are many minions. Set ``enable_legacy_startup_events: False`` in the
 minion config to ensure only the ``salt/minion/<minion_id>/start`` events are
-sent. Beginning with the ``Sodium`` Salt release this option will default to
+sent. Beginning with the ``3001`` Salt release this option will default to
 ``False``.
 
 .. code-block:: yaml
@@ -657,7 +657,7 @@ FQDN (for instance, Solaris).
 ``minion_id_remove_domain``
 ---------------------------
 
-.. versionadded:: Neon
+.. versionadded:: 3000
 
 Default: ``False``
 
@@ -710,7 +710,7 @@ This directory may contain sensitive data and should be protected accordingly.
 
     cachedir: /var/cache/salt/minion
 
-.. conf_master:: color_theme
+.. conf_minion:: color_theme
 
 ``color_theme``
 ---------------
@@ -813,7 +813,7 @@ matches, and regular expressions are supported.
     Some states and execution modules depend on grains. Filtering may cause
     them to be unavailable or run unreliably.
 
-.. versionadded:: Neon
+.. versionadded:: 3000
 
 .. code-block:: yaml
 
@@ -831,11 +831,27 @@ Default: ``False``
 
 The minion can locally cache grain data instead of refreshing the data
 each time the grain is referenced. By default this feature is disabled,
-to enable set grains_cache to ``True``.
+to enable set ``grains_cache`` to ``True``.
 
 .. code-block:: yaml
 
     grains_cache: False
+
+.. conf_minion:: grains_cache_expiration
+
+``grains_cache_expiration``
+---------------------------
+
+Default: ``300``
+
+Grains cache expiration, in seconds. If the cache file is older than this number
+of seconds then the grains cache will be dumped and fully re-populated with
+fresh data. Defaults to 5 minutes. Will have no effect if
+:conf_minion:`grains_cache` is not enabled.
+
+.. code-block:: yaml
+
+    grains_cache_expiration: 300
 
 .. conf_minion:: grains_deep_merge
 
@@ -860,10 +876,11 @@ For example, with these custom grains functions:
 .. code-block:: python
 
     def custom1_k1():
-        return {'custom1': {'k1': 'v1'}}
+        return {"custom1": {"k1": "v1"}}
+
 
     def custom1_k2():
-        return {'custom1': {'k2': 'v2'}}
+        return {"custom1": {"k2": "v2"}}
 
 Without ``grains_deep_merge``, the result would be:
 
@@ -1036,6 +1053,26 @@ The directory where Unix sockets will be kept.
 .. code-block:: yaml
 
     sock_dir: /var/run/salt/minion
+
+.. conf_minion:: enable_fqdns_grains
+
+``enable_fqdns_grains``
+-----------------------
+
+Default: ``True``
+
+In order to calculate the fqdns grain, all the IP addresses from the minion are
+processed with underlying calls to ``socket.gethostbyaddr`` which can take 5 seconds
+to be released (after reaching ``socket.timeout``) when there is no fqdn for that IP.
+These calls to ``socket.gethostbyaddr`` are processed asynchronously, however, it still
+adds 5 seconds every time grains are generated if an IP does not resolve. In Windows
+grains are regenerated each time a new process is spawned. Therefore, the default for
+Windows is ``False``. All other OSes default to ``True``. This options was
+added `here <https://github.com/saltstack/salt/pull/55581>`_.
+
+.. code-block:: yaml
+
+    enable_fqdns_grains: False
 
 .. conf_minion:: enable_gpu_grains
 
@@ -2081,6 +2118,21 @@ List of states to run when the minion starts up if ``startup_states`` is set to 
       - edit.vim
       - hyper
 
+.. conf_minion:: start_event_grains
+
+``start_event_grains``
+----------------------
+
+Default: ``[]``
+
+List of grains to pass in start event when minion starts up.
+
+.. code-block:: yaml
+
+    start_event_grains:
+      - machine_id
+      - uuid
+
 .. conf_minion:: top_file
 
 ``top_file``
@@ -2191,6 +2243,9 @@ auto-loading modules when states run, set this value to ``False``.
     autoload_dynamic_modules: True
 
 .. conf_minion:: clean_dynamic_modules
+
+``clean_dynamic_modules``
+-------------------------
 
 Default: ``True``
 
@@ -2656,8 +2711,7 @@ the ``extra_minion_data`` parameter will be
 
 .. code-block:: python
 
-    {'opt1': 'value1',
-     'opt2': {'subopt1': 'value2'}}
+    {"opt1": "value1", "opt2": {"subopt1": "value2"}}
 
 Security Settings
 =================
@@ -2685,7 +2739,7 @@ minion to clean the keys.
 Default: ``''``
 
 Fingerprint of the master public key to validate the identity of your Salt master
-before the initial key exchange. The master fingerprint can be found by running
+before the initial key exchange. The master fingerprint can be found as ``master.pub`` by running
 "salt-key -F master" on the Salt master.
 
 .. code-block:: yaml
@@ -2861,7 +2915,7 @@ Default: ``None``
 TLS/SSL connection options. This could be set to a dictionary containing
 arguments corresponding to python ``ssl.wrap_socket`` method. For details see
 `Tornado <http://www.tornadoweb.org/en/stable/tcpserver.html#tornado.tcpserver.TCPServer>`_
-and `Python <http://docs.python.org/2/library/ssl.html#ssl.wrap_socket>`_
+and `Python <https://docs.python.org/2/library/ssl.html#ssl.wrap_socket>`_
 documentation.
 
 Note: to set enum arguments values like ``cert_reqs`` and ``ssl_version`` use
